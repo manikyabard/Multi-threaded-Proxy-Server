@@ -26,8 +26,8 @@ class Server:
             # AF_inet = IPv4 and SOCK_STREAM = TCP
             self.server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)  # Re-use the socket
         except error as e:
-            print 'Unable to create/re-use the socket. Error: %s' % e
-            message = 'Unable to create/re-use the socket. Error: %s' % e
+            print(f'Unable to create/re-use the socket. Error: {e}')
+            message = f'Unable to create/re-use the socket. Error: {e}'
             self.log_info(message)
         # bind the socket to a public/local host, and a port
         self.server_socket.bind(('', server_port))
@@ -35,7 +35,7 @@ class Server:
         self.server_socket.listen(10)
         message = "Host Name: Localhost and Host address: 127.0.0.1 and Host port: " + str(server_port) + "\n"
         self.log_info(message)
-        print "Server is ready to listen for clients"
+        print("Server is ready to listen for clients")
 
     def listen_to_client(self):
         """ waiting for client to connect over tcp to the proxy server"""
@@ -83,9 +83,9 @@ class Server:
 
             # Parsing the request line and headers sent by the client
             # since the request will be of the form GET http://www.abc.com HTTP/1.1 extracting the http part
-            resp_part = client_request.split(' ')[0]
+            resp_part = client_request.decode('utf8').split(' ')[0]
             if resp_part == "GET":
-                http_part = client_request.split(' ')[1]
+                http_part = client_request.decode('utf8').split(' ')[1]
                 # stripping the http part to get only the URL and removing the trailing / from the request
                 double_slash_pos = str(http_part).find("//")
                 url_connect = ""
@@ -168,7 +168,7 @@ class Server:
             cached_file.close()
             # sending the cached data
 
-            client_connection_socket.send(response_message)
+            client_connection_socket.send(str.encode(response_message))
             end_time = time.time()
             message = "Client with port: " + str(client_address[1]) + ": Response Length: " + str(len(response_message)) + " bytes\n"
             self.log_info(message)
@@ -189,8 +189,8 @@ class Server:
                 # setting time out so that after last packet if not other packet comes socket will auto close
                 # in 2 seconds
             except error as e:
-                print 'Unable to create the socket. Error: %s' % e
-                message = 'Unable to create the socket. Error: %s' % e
+                print(f'Unable to create the socket. Error: {e}')
+                message = f'Unable to create the socket. Error: {e}'
                 self.log_info(message)
             try:
                 proxy_connection_socket.settimeout(2)
@@ -199,9 +199,9 @@ class Server:
                 # sending GET request from client to the web server
                 web_request = str()
                 if url_slash:
-                    web_request = b"GET /" + url_slash[1:] + " HTTP/1.1\nHost: " + url_connect + "\n\n"
+                    web_request = b"".join([b"GET /", str.encode(url_slash[1:]), b" HTTP/1.1\nHost: ", str.encode(url_connect),b"\n\n"])
                 else:
-                    web_request = b"GET / HTTP/1.1\nHost: " + url_connect + "\n\n"
+                    web_request = b"".join([b"GET / HTTP/1.1\nHost: ", str.encode(url_connect), b"\n\n"])
 
                 # print "GET web request: "+web_request
                 proxy_connection_socket.send(web_request)
@@ -231,7 +231,7 @@ class Server:
                             timeout_flag = True
                         break
                     if len(web_server_response) > 0:
-                        web_server_response_append += web_server_response
+                        web_server_response_append += web_server_response.decode('utf8')
                     else:
                         # all the data has been received so break out of the loop
                         break
@@ -246,7 +246,7 @@ class Server:
                     client_connection_socket.send(error_response)
                 else:
                     # sending the web server response back to client
-                    client_connection_socket.send(web_server_response_append)
+                    client_connection_socket.send(str.encode(web_server_response_append))
                 end_time = time.time()
                 message = "Client with port: " + str(client_address[1]) + " Time Elapsed(RTT): " + str(
                     end_time - start_time) + " seconds \n"
@@ -255,7 +255,7 @@ class Server:
                 # caching the response on the proxy server
                 proxy_temp_file = open(url_file_name, "wb")
                 # writing the entire response to file
-                proxy_temp_file.write(response_to_file)
+                proxy_temp_file.write(str.encode(response_to_file))
                 proxy_temp_file.close()
                 message = "Client with port: " + str(client_address[1]) + " got " \
                                                                           "response of length " +str(len(response_to_file)) + " bytes \n"
@@ -270,7 +270,7 @@ class Server:
                     client_connection_socket.send("HTTP/1.1 408 Request timeout\r\n\r\n")
                 else:'''
                 error_message = "HTTP/1.1 404 Not Found\r\n\r\n"
-                client_connection_socket.send('HTTP/1.1 404 not found\r\n\r\n')
+                client_connection_socket.send(b'HTTP/1.1 404 not found\r\n\r\n')
                 end_time = time.time()
                 message = "Client with port: " + str(client_address[1]) + " Following error occurred : "+str(e) + "\n"
                 self.log_info(message)
